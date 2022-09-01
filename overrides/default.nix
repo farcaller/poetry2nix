@@ -1393,8 +1393,12 @@ lib.composeManyExtensions [
           '';
         });
 
+      # Requires poetry which isn't available during bootstrap
       poetry-plugin-export = super.poetry-plugin-export.overridePythonAttrs (old: {
-        dontUsePythonImportsCheck = true; # Requires poetry which isn't available during bootstrap
+        dontUsePythonImportsCheck = true;
+        pipInstallFlags = [
+          "--no-deps"
+        ];
       });
 
       portend = super.portend.overridePythonAttrs (
