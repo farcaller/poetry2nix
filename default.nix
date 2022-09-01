@@ -30,7 +30,10 @@ let
       getDeps = depAttr:
         let
           compat = isCompatible (poetryLib.getPythonVersion py);
-          deps = pyProject.tool.poetry.${depAttr} or { };
+          deps =
+            pyProject.tool.poetry.${depAttr}
+              or pyProject.tool.poetry.group.${depAttr}.dependencies
+              or { };
           depAttrs = builtins.map (d: lib.toLower d) (builtins.attrNames deps);
         in
         (
@@ -59,7 +62,7 @@ let
       buildInputs = mkInput "buildInputs" (if includeBuildSystem then buildSystemPkgs else [ ]);
       propagatedBuildInputs = mkInput "propagatedBuildInputs" (getDeps "dependencies") ++ ([ py.pkgs.setuptools ]);
       nativeBuildInputs = mkInput "nativeBuildInputs" [ ];
-      checkInputs = mkInput "checkInputs" (getDeps "dev-dependencies");
+      checkInputs = mkInput "checkInputs" (getDeps "dev-dependencies" ++ getDeps "dev");
     };
 
 
@@ -182,7 +185,12 @@ lib.makeScope pkgs.newScope (self: {
                       source = pkgMeta.source or null;
                       files = lockFiles.${name};
                       pythonPackages = self;
-                      sourceSpec = pyProject.tool.poetry.dependencies.${underscorify pkgMeta.name} or pyProject.tool.poetry.dev-dependencies.${underscorify pkgMeta.name} or { };
+                      sourceSpec = (
+                        pyProject.tool.poetry.dependencies.${underscorify pkgMeta.name}
+                          or pyProject.tool.poetry.dev-dependencies.${underscorify pkgMeta.name}
+                          or pyProject.tool.poetry.group.dev.dependencies.${underscorify pkgMeta.name}  # Poetry 1.2.0+
+                          or { }
+                      );
                     }
                   );
                 }
@@ -294,6 +302,7 @@ lib.makeScope pkgs.newScope (self: {
       allEditablePackageSources = (
         (getEditableDeps (pyProject.tool.poetry."dependencies" or { }))
         // (getEditableDeps (pyProject.tool.poetry."dev-dependencies" or { }))
+        // (getEditableDeps (pyProject.tool.poetry.group.dev."dependencies" or { }))  # Poetry 1.2.0+
         // editablePackageSources
       );
 
